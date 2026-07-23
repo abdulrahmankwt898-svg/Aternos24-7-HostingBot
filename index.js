@@ -549,7 +549,13 @@ function createBot() {
     });
 
     // FIX: 'end' is the single reconnect trigger
-    bot.on('end', (reason) => {
+    bot.on('end',        // Extra protection for EPIPE error
+        bot.on('error', (err) => {
+            console.log(`[Bot] Error: ${err.message}`);
+            if (err.code === 'EPIPE' || err.code === 'ECONNRESET') {
+                console.log('[Bot] Socket closed unexpectedly - will reconnect slowly');
+            }
+        }); (reason) => {
       console.log(`[Bot] Disconnected: ${reason || 'Unknown reason'}`);
       botState.connected = false;
       clearAllIntervals();
@@ -592,11 +598,11 @@ function scheduleReconnect() {
   const delay = getReconnectDelay();
   console.log(`[Bot] Reconnecting in ${delay / 1000}s (attempt #${botState.reconnectAttempts})`);
 
-  reconnectTimeoutId = setTimeout(() => {
-    reconnectTimeoutId = null;
-    isReconnecting = false;
-    createBot();
-  }, delay);
+              reconnectTimeoutId = setTimeout(() => {
+                reconnectTimeoutId = null;
+                isReconnecting = false;
+                createBot();
+            }, 15000);   // Changed to 15 seconds
 }
 
 // ============================================================
